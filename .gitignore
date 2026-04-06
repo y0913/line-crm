@@ -5,7 +5,7 @@
 
 # Supabase
 .branches
-.temp
+**/.temp
 
 # Node
 node_modules
