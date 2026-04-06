@@ -11,7 +11,22 @@ export type LineUser = {
   display_name: string | null;
   picture_url: string | null;
   source_type: string | null;
+  memo: string | null;
   followed_at: string;
+  created_at: string;
+};
+
+export type Tag = {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+};
+
+export type UserTag = {
+  id: string;
+  line_user_id: string;
+  tag_id: string;
   created_at: string;
 };
 

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { LineUser, Message } from "@/lib/supabase";
+import type { LineUser, Message, Tag } from "@/lib/supabase";
 import {
   Avatar,
   AvatarFallback,
@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MessageForm } from "@/components/message-form";
+import { MemoEditor } from "@/components/memo-editor";
+import { TagManager } from "@/components/tag-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -39,20 +42,28 @@ export default async function UserDetailPage({
 
   const typedUser = user as LineUser;
 
-  const [{ data: messages }, { count: messageCount }] = await Promise.all([
-    supabase
-      .from("messages")
-      .select("*")
-      .eq("line_user_id", typedUser.line_user_id)
-      .order("sent_at", { ascending: false })
-      .limit(50),
-    supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("line_user_id", typedUser.line_user_id),
-  ]);
+  const [{ data: messages }, { count: messageCount }, { data: userTags }] =
+    await Promise.all([
+      supabase
+        .from("messages")
+        .select("*")
+        .eq("line_user_id", typedUser.line_user_id)
+        .order("sent_at", { ascending: false })
+        .limit(50),
+      supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("line_user_id", typedUser.line_user_id),
+      supabase
+        .from("user_tags")
+        .select("tag_id, tags(*)")
+        .eq("line_user_id", typedUser.line_user_id),
+    ]);
 
   const typedMessages = (messages as Message[]) ?? [];
+  const assignedTags = (userTags ?? []).map(
+    (ut: Record<string, unknown>) => ut.tags as Tag
+  );
 
   return (
     <>
@@ -63,8 +74,8 @@ export default async function UserDetailPage({
       <main className="p-6 space-y-6">
         {/* Profile */}
         <Card>
-          <CardContent className="flex items-center gap-6 pt-6">
-            <Avatar className="h-20 w-20">
+          <CardContent className="flex items-start gap-6 pt-6">
+            <Avatar className="h-20 w-20 shrink-0">
               {typedUser.picture_url && (
                 <AvatarImage
                   src={typedUser.picture_url}
@@ -75,14 +86,14 @@ export default async function UserDetailPage({
                 {typedUser.display_name?.charAt(0).toUpperCase() ?? "?"}
               </AvatarFallback>
             </Avatar>
-            <div className="space-y-1">
+            <div className="space-y-2 flex-1">
               <h2 className="text-2xl font-bold">
                 {typedUser.display_name ?? "名前未取得"}
               </h2>
               <p className="text-sm text-muted-foreground font-mono">
                 {typedUser.line_user_id}
               </p>
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex items-center gap-3">
                 <Badge variant="secondary">
                   {typedUser.source_type ?? "unknown"}
                 </Badge>
@@ -93,7 +104,24 @@ export default async function UserDetailPage({
                   メッセージ: {messageCount ?? 0}件
                 </span>
               </div>
+              <TagManager
+                lineUserId={typedUser.line_user_id}
+                assignedTags={assignedTags}
+              />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Memo */}
+        <Card>
+          <CardHeader>
+            <CardTitle>メモ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MemoEditor
+              lineUserId={typedUser.line_user_id}
+              initialMemo={typedUser.memo}
+            />
           </CardContent>
         </Card>
 
@@ -102,7 +130,9 @@ export default async function UserDetailPage({
           <CardHeader>
             <CardTitle>メッセージ履歴</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <MessageForm lineUserId={typedUser.line_user_id} />
+
             {typedMessages.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 メッセージはまだありません
@@ -113,7 +143,9 @@ export default async function UserDetailPage({
                   <div
                     key={msg.id}
                     className={`flex ${
-                      msg.direction === "outbound" ? "justify-end" : "justify-start"
+                      msg.direction === "outbound"
+                        ? "justify-end"
+                        : "justify-start"
                     }`}
                   >
                     <div
@@ -123,7 +155,9 @@ export default async function UserDetailPage({
                           : "bg-zinc-100 dark:bg-zinc-800"
                       }`}
                     >
-                      <p className="text-sm">{msg.content ?? `[${msg.message_type}]`}</p>
+                      <p className="text-sm">
+                        {msg.content ?? `[${msg.message_type}]`}
+                      </p>
                       <p
                         className={`text-xs mt-1 ${
                           msg.direction === "outbound"
