@@ -6,6 +6,7 @@
 # Supabase
 .branches
 **/.temp
+supabase/snippets
 
 # Node
 node_modules

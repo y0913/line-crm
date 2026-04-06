@@ -19,6 +19,10 @@ alter table messages add column if not exists tenant_id uuid references auth.use
 alter table tags add column if not exists tenant_id uuid references auth.users(id);
 alter table user_tags add column if not exists tenant_id uuid references auth.users(id);
 
+-- 依存する外部キーを先に削除
+alter table messages drop constraint if exists messages_line_user_id_fkey;
+alter table user_tags drop constraint if exists user_tags_line_user_id_fkey;
+
 -- 既存のユニーク制約を削除してテナントスコープに変更
 alter table line_users drop constraint if exists line_users_line_user_id_key;
 alter table line_users add constraint line_users_tenant_line_user_id_key unique(tenant_id, line_user_id);
