@@ -4,6 +4,7 @@ LINE Messaging API + Supabase を使ったシンプルなCRMシステム。
 
 ## 技術スタック
 
+- **フロントエンド**: Next.js (App Router) / Tailwind CSS / shadcn/ui
 - **バックエンド**: Supabase (Database / Edge Functions)
 - **ランタイム**: Deno (Edge Functions)
 - **外部API**: LINE Messaging API
@@ -96,7 +97,23 @@ create table messages (
 ngrok config add-authtoken 取得したtoken
 ```
 
-### 6. LINE Developers設定
+### 6. フロントエンド（管理画面）セットアップ
+
+```bash
+cd web
+npm install
+```
+
+環境変数ファイルを作成（`ANON_KEY` は `supabase status -o json` で確認）：
+
+```bash
+cat > web/.env.local << 'EOF'
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY>
+EOF
+```
+
+### 7. LINE Developers設定
 
 1. https://developers.line.biz にアクセス
 2. プロバイダー作成 → 「LINE公式アカウントを作成する」
@@ -120,7 +137,16 @@ supabase start
 supabase functions serve line-webhook --no-verify-jwt
 ```
 
-**ターミナル2：ngrok起動**
+**ターミナル2：フロントエンド（管理画面）起動**
+
+```bash
+cd web
+npm run dev
+```
+
+http://localhost:3000 でダッシュボードにアクセスできる。
+
+**ターミナル3：ngrok起動**
 
 ```bash
 ngrok http 54321
@@ -189,17 +215,27 @@ Studio → Table Editor → `messages` でレコードを確認。
 
 ## 環境変数一覧
 
-`.env.example` を参考に `.env` を作成：
+### バックエンド（`.env`）
+
+`.env.example` を参考に作成：
 
 ```
 LINE_CHANNEL_SECRET=your_channel_secret
 LINE_CHANNEL_ACCESS_TOKEN=your_channel_access_token
 ```
 
+### フロントエンド（`web/.env.local`）
+
+```
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase status -o json で取得>
+```
+
 ---
 
 ## 開発時の注意
 
-- `.env` はGit管理外（`.gitignore`で除外済み）
+- `.env` / `web/.env.local` はGit管理外（`.gitignore`で除外済み）
 - Claude Codeは `.env` を読めないようにフック設定済み（`.claude/hooks/protect-env.sh`）
 - ngrokの無料プランはセッション切れるたびURLが変わるため、都度LINE DevelopersコンソールのWebhook URLを更新する
+- フロントエンドのコードは `web/` ディレクトリに配置
