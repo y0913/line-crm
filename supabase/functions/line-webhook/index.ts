@@ -23,8 +23,32 @@ serve(async (req) => {
     if (!lineUserId) continue;
 
     if (event.type === "follow") {
+      // LINE APIからプロフィール取得
+      let displayName: string | null = null;
+      let pictureUrl: string | null = null;
+      const channelAccessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+      if (channelAccessToken) {
+        try {
+          const profileRes = await fetch(
+            `https://api.line.me/v2/bot/profile/${lineUserId}`,
+            {
+              headers: { Authorization: `Bearer ${channelAccessToken}` },
+            }
+          );
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            displayName = profile.displayName ?? null;
+            pictureUrl = profile.pictureUrl ?? null;
+          }
+        } catch {
+          // プロフィール取得失敗は無視して続行
+        }
+      }
+
       await supabase.from("line_users").upsert({
         line_user_id: lineUserId,
+        display_name: displayName,
+        picture_url: pictureUrl,
         source_type: source?.type ?? "unknown",
         followed_at: new Date(event.timestamp as number).toISOString(),
       }, { onConflict: "line_user_id" });

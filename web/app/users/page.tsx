@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { LineUser } from "@/lib/supabase";
 import {
@@ -67,9 +68,9 @@ export default async function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {(users as LineUser[]).map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.id} className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <Link href={`/users/${user.id}`} className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
                             {user.picture_url && (
                               <AvatarImage
@@ -84,7 +85,7 @@ export default async function UsersPage() {
                           <span className="text-sm font-medium">
                             {user.display_name ?? "名前未取得"}
                           </span>
-                        </div>
+                        </Link>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {user.line_user_id}

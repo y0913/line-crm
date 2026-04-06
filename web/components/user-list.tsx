@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Avatar,
@@ -40,9 +41,10 @@ export function UserList({ users }: UserListProps) {
         ) : (
           <div className="space-y-3">
             {users.map((user) => (
-              <div
+              <Link
                 key={user.id}
-                className="flex items-center gap-3 rounded-lg border p-3"
+                href={`/users/${user.id}`}
+                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
               >
                 <Avatar className="h-10 w-10">
                   {user.picture_url && (
@@ -68,7 +70,7 @@ export function UserList({ users }: UserListProps) {
                     {formatDate(user.followed_at)}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
