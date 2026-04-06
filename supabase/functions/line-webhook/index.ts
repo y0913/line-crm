@@ -1,6 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+async function fetchLineProfile(lineUserId: string): Promise<{
+  displayName: string | null;
+  pictureUrl: string | null;
+}> {
+  const channelAccessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+  if (!channelAccessToken) return { displayName: null, pictureUrl: null };
+
+  try {
+    const res = await fetch(
+      `https://api.line.me/v2/bot/profile/${lineUserId}`,
+      { headers: { Authorization: `Bearer ${channelAccessToken}` } }
+    );
+    if (res.ok) {
+      const profile = await res.json();
+      return {
+        displayName: profile.displayName ?? null,
+        pictureUrl: profile.pictureUrl ?? null,
+      };
+    }
+  } catch {
+    // プロフィール取得失敗は無視して続行
+  }
+  return { displayName: null, pictureUrl: null };
+}
+
 serve(async (req) => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -23,27 +48,7 @@ serve(async (req) => {
     if (!lineUserId) continue;
 
     if (event.type === "follow") {
-      // LINE APIからプロフィール取得
-      let displayName: string | null = null;
-      let pictureUrl: string | null = null;
-      const channelAccessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
-      if (channelAccessToken) {
-        try {
-          const profileRes = await fetch(
-            `https://api.line.me/v2/bot/profile/${lineUserId}`,
-            {
-              headers: { Authorization: `Bearer ${channelAccessToken}` },
-            }
-          );
-          if (profileRes.ok) {
-            const profile = await profileRes.json();
-            displayName = profile.displayName ?? null;
-            pictureUrl = profile.pictureUrl ?? null;
-          }
-        } catch {
-          // プロフィール取得失敗は無視して続行
-        }
-      }
+      const { displayName, pictureUrl } = await fetchLineProfile(lineUserId);
 
       await supabase.from("line_users").upsert({
         line_user_id: lineUserId,
@@ -55,6 +60,24 @@ serve(async (req) => {
     }
 
     if (event.type === "message") {
+      // ユーザーが未登録 or プロフィール未取得なら取得して保存
+      const { data: existingUser } = await supabase
+        .from("line_users")
+        .select("display_name")
+        .eq("line_user_id", lineUserId)
+        .single();
+
+      if (!existingUser || !existingUser.display_name) {
+        const { displayName, pictureUrl } = await fetchLineProfile(lineUserId);
+
+        await supabase.from("line_users").upsert({
+          line_user_id: lineUserId,
+          display_name: displayName,
+          picture_url: pictureUrl,
+          source_type: source?.type ?? "unknown",
+        }, { onConflict: "line_user_id" });
+      }
+
       const message = event.message as Record<string, unknown> | undefined;
       await supabase.from("messages").insert({
         line_user_id: lineUserId,
