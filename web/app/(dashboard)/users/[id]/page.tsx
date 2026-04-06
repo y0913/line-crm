@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { cookies } from "next/headers";
+import { createServerClient } from "@/lib/supabase";
 import type { LineUser, Message, Tag } from "@/lib/supabase";
 import {
   Avatar,
@@ -31,6 +32,8 @@ export default async function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
 
   const { data: user } = await supabase
     .from("line_users")

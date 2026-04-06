@@ -1,18 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, MessageSquare } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, Users, MessageSquare, Settings, LogOut } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { createClient } from "@/lib/supabase";
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/users", label: "ユーザー", icon: Users },
   { href: "/messages", label: "メッセージ", icon: MessageSquare },
+  { href: "/settings", label: "設定", icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r bg-white dark:bg-zinc-900">
@@ -41,6 +51,16 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <Separator />
+      <div className="px-3 py-3">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+        >
+          <LogOut className="h-4 w-4" />
+          ログアウト
+        </button>
+      </div>
     </aside>
   );
 }

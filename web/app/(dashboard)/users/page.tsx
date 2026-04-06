@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { cookies } from "next/headers";
+import { createServerClient } from "@/lib/supabase";
 import type { LineUser } from "@/lib/supabase";
 import {
   Avatar,
@@ -31,6 +32,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default async function UsersPage() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+
   const [{ data: users, count }] = await Promise.all([
     supabase
       .from("line_users")

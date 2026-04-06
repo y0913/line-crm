@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+import { cookies } from "next/headers";
+import { createServerClient } from "@/lib/supabase";
 import type { Message } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default async function MessagesPage() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+
   const [{ data: messages, count }] = await Promise.all([
     supabase
       .from("messages")

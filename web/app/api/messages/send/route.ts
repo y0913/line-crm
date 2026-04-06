@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const { user, supabase, error } = await getAuthenticatedUser();
+  if (error) return error;
+
   const { lineUserId, message } = await req.json();
 
   if (!lineUserId || !message) {
@@ -11,11 +14,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) {
+  // DBからLINEトークンを取得
+  const { data: config } = await supabase
+    .from("tenant_line_config")
+    .select("line_channel_access_token")
+    .eq("tenant_id", user!.id)
+    .single();
+
+  if (!config?.line_channel_access_token) {
     return NextResponse.json(
-      { error: "LINE_CHANNEL_ACCESS_TOKEN is not configured" },
-      { status: 500 }
+      { error: "LINE設定が未完了です。設定画面からトークンを登録してください。" },
+      { status: 400 }
     );
   }
 
@@ -24,7 +33,7 @@ export async function POST(req: NextRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${config.line_channel_access_token}`,
     },
     body: JSON.stringify({
       to: lineUserId,
@@ -33,15 +42,16 @@ export async function POST(req: NextRequest) {
   });
 
   if (!lineRes.ok) {
-    const error = await lineRes.text();
+    const err = await lineRes.text();
     return NextResponse.json(
-      { error: `LINE API error: ${error}` },
+      { error: `LINE API error: ${err}` },
       { status: lineRes.status }
     );
   }
 
   // DBに送信メッセージを保存
   await supabase.from("messages").insert({
+    tenant_id: user!.id,
     line_user_id: lineUserId,
     direction: "outbound",
     message_type: "text",
